@@ -1,52 +1,94 @@
+const pixelPercentageThreshold = 0.04;
+const colorDifferenceThreshold = 60;
+
+const videoResizeScale = 10;
+
+const debug = true;
+
+const dotsColor = "white";
+const dotsBackgroundColor = "black";
+
+//
+
 let video;
-let prevFrame;
-let movementDetected = false;
-let threshold = 1;
+let previousFrame;
+
+let totalPixels;
 
 //
 
-function startVideo() {
+function setupMovementDetection() {
+  pixelDensity(1);
+
   video = createCapture(VIDEO);
-  video.size(windowWidth, windowHeight);
+  const resizedWidth = width / videoResizeScale;
+  const resizedHeight = height / videoResizeScale;
+  video.size(resizedWidth, resizedHeight);
   video.hide();
+
+  totalPixels = Math.round(resizedHeight * resizedWidth);
+
+  previousFrame = createImage(video.width, video.height);
 }
 
-function loadVideoPixels() {
+//
+
+function detectMovementAndDrawDots() {
+  let movingPixels = 0;
+
   video.loadPixels();
-}
+  previousFrame.loadPixels();
 
-function updateVideoSize() {
-  video.size(windowWidth, windowHeight);
-}
+  for (let y = 0; y < video.height; y++) {
+    for (let x = 0; x < video.width; x++) {
+      var index = (x + y * video.width) * 4;
 
-//
+      let pr = previousFrame.pixels[index + 0];
+      let pg = previousFrame.pixels[index + 1];
+      let pb = previousFrame.pixels[index + 2];
 
-function resetMovementDetectionReference() {
-  prevFrame = new Array(video.width * video.height * 4).fill(0);
-}
+      let r = video.pixels[index + 0];
+      let g = video.pixels[index + 1];
+      let b = video.pixels[index + 2];
 
-function updateMovementDetectionReference() {
-  prevFrame = video.pixels.slice();
-}
+      var diff = dist(r, g, b, pr, pg, pb);
 
-//
+      if (diff >= colorDifferenceThreshold) {
+        movingPixels++;
+      }
 
-function detectMovement() {
-  if (prevFrame) {
-    movementDetected = false;
-
-    for (let i = 0; i < video.pixels.length; i += 4) {
-      let r = video.pixels[i];
-      let g = video.pixels[i + 1];
-      let b = video.pixels[i + 2];
-      let gray = (r + g + b) / 3;
-      let prevGray = (prevFrame[i] + prevFrame[i + 1] + prevFrame[i + 2]) / 3;
-      let diff = abs(gray - prevGray);
-
-      if (diff > threshold) {
-        movementDetected = true;
-        break;
+      // Debug view
+      if (debug) {
+        if (diff < colorDifferenceThreshold) {
+          fill(dotsBackgroundColor);
+        } else {
+          fill(dotsColor);
+        }
+        noStroke();
+        rect(
+          x * videoResizeScale,
+          y * videoResizeScale,
+          videoResizeScale,
+          videoResizeScale
+        );
       }
     }
   }
+
+  previousFrame.copy(
+    video,
+    0,
+    0,
+    video.width,
+    video.height,
+    0,
+    0,
+    video.width,
+    video.height
+  );
+
+  return movingPixels / totalPixels > pixelPercentageThreshold;
 }
+
+// TODO - Implement
+function updateMovementDetectionOnWindowResize() {}
