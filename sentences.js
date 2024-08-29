@@ -16,8 +16,8 @@ let baseFrequency = 200;
 
 let ticksBeforeAdd = 20;
 
-let textColor = "white";
-let sentencesBackgroundColor = "black";
+let textColor = "black";
+let sentencesBackgroundColor = "white";
 
 //
 
@@ -115,10 +115,20 @@ class Sentence {
 
   render() {
     this.startOscillator();
+    push();
+    fill(sentencesBackgroundColor);
+    const correction = this.fontSize / 10;
+    rect(
+      this.x,
+      this.y - this.fontSize + correction,
+      this.getTextWidth(),
+      this.fontSize + correction
+    );
     fill(textColor);
     textSize(this.fontSize);
     textAlign(LEFT);
     text(this.text, this.x, this.y);
+    pop();
   }
 
   startOscillator() {
