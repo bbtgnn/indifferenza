@@ -11,59 +11,125 @@ let allSentences = [
   "Il mondo non cambia da solo.",
 ];
 
-let sentences = [];
-
-let currentSentenceIndex = 0;
 let sentenceDisplayTime = 3000;
-let lastSentenceTime = 0;
-let oscillators = [];
 let baseFrequency = 200;
 
-function setupSentences() {
-  for (let i = 0; i < allSentences.length; i++) {
-    let osc = new p5.Oscillator("sine");
-    osc.freq(baseFrequency + i * 50);
-    osc.amp(0);
-    osc.start();
-    oscillators.push(osc);
+let ticksBeforeAdd = 20;
+
+let textColor = "white";
+let sentencesBackgroundColor = "black";
+
+//
+
+class SentenceManager {
+  constructor() {
+    /** @type {Sentence[]} */
+    this.sentences = [];
+    this.ticksCount = 0;
+  }
+
+  get nextSentenceIndex() {
+    return this.sentences.length;
+  }
+
+  get nextText() {
+    return allSentences[this.nextSentenceIndex];
+  }
+
+  get areAllSentencesDrawn() {
+    return this.nextSentenceIndex == allSentences.length;
+  }
+
+  addSentence() {
+    const sentence = new Sentence(this.nextSentenceIndex, this.nextText);
+    this.sentences.push(sentence);
+  }
+
+  resetSentences() {
+    this.sentences.forEach((s) => s.delete());
+    this.sentences = [];
+  }
+
+  render() {
+    if (this.areAllSentencesDrawn) this.resetSentences();
+    for (const sentence of this.sentences) sentence.render();
+
+    if (this.ticksCount == ticksBeforeAdd) {
+      this.ticksCount = 0;
+      this.addSentence();
+    }
+
+    this.ticksCount++;
+  }
+
+  stopOscillators() {
+    this.sentences.forEach((s) => s.stopOscillator());
   }
 }
 
-function drawSentences() {
-  if (movementDetected) {
-    if (millis() - lastSentenceTime > sentenceDisplayTime) {
-      if (currentSentenceIndex >= allSentences.length) {
-        currentSentenceIndex = 0;
-        sentences = [];
-      }
+//
 
-      let x = random(50, width - 50);
-      let y = random(50, height - 50);
-      let size = random(12, 36);
-      sentences.push({
-        text: allSentences[currentSentenceIndex],
-        x: x,
-        y: y,
-        size: size,
-      });
-      oscillators[currentSentenceIndex].amp(0.5, 0.5);
-      currentSentenceIndex++;
-      lastSentenceTime = millis();
-    }
+class Sentence {
+  /**
+   *
+   * @param {number} index
+   * @param {string} text
+   */
+  constructor(index, text) {
+    this.index = index;
+    this.text = text;
 
-    for (let i = 0; i < currentSentenceIndex; i++) {
-      oscillators[i].amp(0.5, 0.5);
-    }
+    this.startTime = millis();
+    this.oscillator = this.createOscillator();
 
-    fill(255); // Scritte sempre bianche
-    for (let phrase of sentences) {
-      textSize(phrase.size);
-      textAlign(CENTER, CENTER);
-      text(phrase.text, phrase.x, phrase.y);
-    }
-  } else {
-    for (let i = 0; i < oscillators.length; i++) {
-      oscillators[i].amp(0, 0.5);
-    }
+    const m = 50;
+    this.fontSize = random(12, 36);
+    this.x = random(m, width - this.getTextWidth() - m);
+    this.y = random(m + this.fontSize, height - m - this.fontSize);
+  }
+
+  get life() {
+    return millis() - this.startTime;
+  }
+
+  get isAlive() {
+    return this.life < sentenceDisplayTime;
+  }
+
+  createOscillator() {
+    let osc = new p5.Oscillator("sine");
+    osc.freq(baseFrequency + this.index * 50);
+    osc.amp(0);
+    osc.start();
+    return osc;
+  }
+
+  getTextWidth() {
+    let w;
+    push();
+    textSize(this.fontSize);
+    w = textWidth(this.text);
+    pop();
+    return w;
+  }
+
+  render() {
+    this.startOscillator();
+    fill(textColor);
+    textSize(this.fontSize);
+    textAlign(LEFT);
+    text(this.text, this.x, this.y);
+  }
+
+  startOscillator() {
+    this.oscillator.amp(0.5, 0.05);
+  }
+
+  stopOscillator() {
+    this.oscillator.amp(0, 0.5);
+  }
+
+  delete() {
+    this.oscillator.stop();
   }
 }
